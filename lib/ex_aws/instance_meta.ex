@@ -1,6 +1,8 @@
 defmodule ExAws.InstanceMeta do
   @moduledoc false
 
+  require Logger
+
   # Provides access to the AWS Instance MetaData
   # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
 
@@ -92,6 +94,8 @@ defmodule ExAws.InstanceMeta do
         nil -> instance_role_credentials(config)
         credentials -> credentials
       end
+
+    Logger.info("Security credentials expiration: #{inspect(result["Expiration"])}")
 
     %{
       access_key_id: result["AccessKeyId"],

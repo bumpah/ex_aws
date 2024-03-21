@@ -3,6 +3,8 @@ defmodule ExAws.Config.AuthCache do
 
   use GenServer
 
+  require Logger
+
   # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html
 
   @refresh_lead_time 1_800_000
@@ -27,9 +29,11 @@ defmodule ExAws.Config.AuthCache do
   def get(profile, expiration) do
     case :ets.lookup(__MODULE__, {:awscli, profile}) do
       [{{:awscli, ^profile}, auth_config}] ->
+        Logger.info("Found existing AwsCLI config: #{inspect(auth_config)}")
         auth_config
 
       [] ->
+        Logger.info("Refresh AwsCLI config: expiration - #{inspect(expiration)}")
         GenServer.call(__MODULE__, {:refresh_awscli_config, profile, expiration}, 30_000)
     end
   end
@@ -47,6 +51,7 @@ defmodule ExAws.Config.AuthCache do
   end
 
   def handle_call({:refresh_awscli_config, profile, expiration}, _from, ets) do
+    Logger.info("Refresh AwsCLI config: expiration - #{inspect(expiration)}")
     auth = refresh_awscli_config(profile, expiration, ets)
     {:reply, auth, ets}
   end
@@ -57,6 +62,7 @@ defmodule ExAws.Config.AuthCache do
   end
 
   def handle_info({:refresh_awscli_config, profile, expiration}, ets) do
+    Logger.info("Refresh AwsCLI config: expiration - #{inspect(expiration)}")
     refresh_awscli_config(profile, expiration, ets)
     {:noreply, ets}
   end
@@ -141,6 +147,8 @@ defmodule ExAws.Config.AuthCache do
         expiration
         |> NaiveDateTime.from_iso8601!()
         |> NaiveDateTime.diff(NaiveDateTime.utc_now(), :millisecond)
+
+      Logger.info("Expires in: #{expires_in_ms}")
 
       # refresh lead_time before auth expires, unless the time has passed
       # otherwise refresh needed now
